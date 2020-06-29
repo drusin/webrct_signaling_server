@@ -1,0 +1,21 @@
+{
+  "name": "webrtc_signaling_server",
+  "version": "0.0.1",
+  "description": "Generic lobby-based signaling server for establishing webrtc connections",
+  "main": "server.js",
+  "type": "module",
+  "dependencies": {
+    "ws": "^7.3.0"
+  },
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": "14.4.x"
+  },
+  "repository": {
+    "url": "https://github.com/drusin/webrct_signaling_server"
+  },
+  "author": "Dawid Rusin",
+  "license": "MIT"
+}
