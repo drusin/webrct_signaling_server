@@ -168,6 +168,7 @@ function leaveLobby(peer) {
 		removePeerId(peer, lobby);
 		lobbyUpdate(lobbies.get(peer.lobbyId));
 		deleteLobby(peer);
+		updateLobbyList();
 	}
 }
 
