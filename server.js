@@ -36,30 +36,7 @@ server.on('connection', (webSocket) => {
 	peers.set(peer.id, peer);
 	updateLobbyList();
 
-	// webSocket.on('message', data => {
-	// 	const message = JSON.parse(data)
-	// 	switch (message.type) {
-	// 		case MESSAGES.START_SERVER:
-	// 			peers.delete(peer.id);
-	// 			peer.isServer = true;
-	// 			peers.set(peer.id, peer);
-	// 			webSocket.send(createMsg(MESSAGES.ID, peer.id));
-	// 			break;
-	// 		case MESSAGES.JOIN_SERVER:
-	// 			webSocket.send(createMsg(MESSAGES.ID, peer.id));
-	// 			broadcastPeers();
-	// 			break;
-	// 		case MESSAGES.OFFER:
-	// 			//fall through
-	// 		case MESSAGES.ANSWER:
-	// 			//fall through
-	// 		case MESSAGES.CANDIDATE:
-	// 			peers.get(message.id).webSocket.send(createMsg(message.type, peer.id, message.payload));
-	// 			break;
-	// 	}
-	// });
-
-		webSocket.on('message', data => {
+	webSocket.on('message', data => {
 		const message = JSON.parse(data)
 		console.log(message);
 		switch (message.type) {
@@ -121,7 +98,6 @@ function broadcastPeers(lobby) {
 		for (let id of lobby.players.keys()) {
 			if (peer.id !== id) {
 				peer.webSocket.send(createMsg(MESSAGES.PEER, { id: id}));
-				peer.webSocket.send(createMsg(MESSAGES.HOST_ID, { id: HOST_ID }))
 			}
 		}
 	}
