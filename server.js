@@ -67,10 +67,13 @@ server.on('connection', (webSocket) => {
 				createNewLobby(peer, message);
 				break;
 			case MESSAGES.JOIN_LOBBY:
-				joinLobby(peer, message);
+				joinLobby(peer, message.payload.id);
+				break;
+			case MESSAGES.LEAVE_LOBBY:
+				leaveLobby(peer);
 				break;
 			case MESSAGES.SEAL_LOBBY:
-				sealLobby(peer, message);
+				sealLobby(peer);
 				break;
 			case MESSAGES.DELETE_LOBBY:
 				deleteLobby(peer);
@@ -80,16 +83,18 @@ server.on('connection', (webSocket) => {
 			case MESSAGES.ANSWER:
 				//fall through
 			case MESSAGES.CANDIDATE:
-				peers.get(message.payload.id).webSocket.send(
+				const sendTo = message.payload.id === HOST_ID ? lobbies.get(peer.lobbyId).host : peers.get(message.payload.id)
+				sendTo.webSocket.send(
 					createMsg(message.type, Object.assign(message.payload, { id: peer.id })));
 				break;
 		}
 	});
 
 	webSocket.on('close', () => {
-		console.log(`Client disconnected!: ${peer.id}`);
 		deleteLobby(peer);
 		peers.delete(peer.id);
+		updateLobbyList()
+		console.log(`Client disconnected!: ${peer.id}`);
 	})
 });
 
@@ -103,12 +108,8 @@ function createNewLobby(peer, message) {
 		name: message.payload.name,
 		password: message.payload.password
 	});
-	peer.lobby = lobby.id;
 	lobbies.set(lobby.id, lobby);
-	sendPeerId(peer);
-	broadcastPeers(lobby);
-	lobbyUpdate(lobby);
-	updateLobbyList();
+	joinLobby(peer, lobby.id);
 }
 
 function sendPeerId(peer) {
@@ -119,8 +120,8 @@ function broadcastPeers(lobby) {
 	for (let peer of lobby.players.values()) {
 		for (let id of lobby.players.keys()) {
 			if (peer.id !== id) {
-				peer.webSocket.send(createMsg(MESSAGES.PEER, id));
-				peer.webSocket.send(createMsg(MESSAGES.HOST_ID, HOST_ID))
+				peer.webSocket.send(createMsg(MESSAGES.PEER, { id: id}));
+				peer.webSocket.send(createMsg(MESSAGES.HOST_ID, { id: HOST_ID }))
 			}
 		}
 	}
@@ -137,13 +138,14 @@ function lobbyUpdate(lobby) {
  * {
  * 	id: 8765292390,
  * 	name: 'Awesome Lobby!'
- * 	players: [ { alias: 'Horst', isHost: true } ]
+ * 	players: [ { alias: 'Horst', isHost: true, id: 12345 } ]
  * }
  */
 function createLobbyUpdatePayload(lobby) {
 	const payload = {};
 	payload.id = lobby.id;
 	payload.name = lobby.name;
+	payload.hasPassword = lobby.hasPassword
 	payload.players = Array.from(lobby.players.values()).map(player => ({
 		alias: player.alias,
 		isHost: player.isHost,
@@ -169,19 +171,49 @@ function createLobbyListPayload() {
 		}));
 }
 
-function joinLobby(peer, message) {
-	console.log(peer);
-	console.log(message);
+function joinLobby(peer, lobbyId) {
+	const lobby = lobbies.get(lobbyId);
+	if (!lobby || lobby.isFull) {
+		console.error('lobby is full');
+		return;
+	}
+	peer.lobbyId = lobby.id;
+	lobby.add(peer);
+	sendPeerId(peer);
+	broadcastPeers(lobby);
+	lobbyUpdate(lobby);
+	updateLobbyList();
 }
 
-function sealLobby(peer, message) {
+function leaveLobby(peer) {
+	const lobby = peer.lobbyId && lobbies.get(peer.lobbyId);
+	if (lobby) {
+		lobby.remove(peer);
+		removePeerId(peer, lobby);
+		lobbyUpdate(lobbies.get(peer.lobbyId));
+		deleteLobby(peer);
+	}
+}
+
+function removePeerId(peer, lobby) {
+	lobby.players.forEach(player => 
+		player.webSocket.send(createMsg(MESSAGES.REMOVE_PEER, { id: peer.id }))
+	);
+}
+
+function sealLobby(peer) {
 	console.log(peer);
-	console.log(message);
 }
 
 function deleteLobby(peer) {
-	if (peer.lobby) {
-		lobbies.delete(peer.lobby);
+	const lobby = peer.lobbyId && lobbies.get(peer.lobbyId);
+	if (lobby && peer === lobby.host) {
+		lobby.players.forEach(player => 
+			player.webSocket.send(createMsg(MESSAGES.DELETE_LOBBY, { id: lobby.id }))
+		);
+		lobbies.delete(peer.lobbyId);
+		peer.lobbyId = undefined;
+		peer.isHost = false;
 		updateLobbyList();
 	}
 }

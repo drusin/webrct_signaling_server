@@ -24,11 +24,11 @@ export default class Lobby {
     }
 
 	add(peer) {
-		this.players.add(peer);
+		this.players.set(peer.id, peer);
 	}
 
 	remove(peer) {
-		this.players.delete(peer);
+		this.players.delete(peer.id);
 	}
 
 	seal() {
