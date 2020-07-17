@@ -1,5 +1,5 @@
 export default class Lobby {
-	constructor({ id, game, host, maxPlayers, name, password = '' }) {
+	constructor({ id, game, host, maxPlayers, name, password = '', data = {} }) {
 		this.id = id;
 		this.game = game;
 		this.host = host;
@@ -9,6 +9,7 @@ export default class Lobby {
 		this.players = new Map();
 		this.players.set(host.id, host);
 		this.sealed = false;
+		this.data = data;
 	}
 	
 	get hasPassword() {
